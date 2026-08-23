@@ -1,15 +1,100 @@
 import AppKit
 
+final class ToggleSwitch: NSView {
+    var onToggle: ((Bool) -> Void)?
+
+    private(set) var isOn = false
+
+    private let track = NSView()
+    private let knob = NSView()
+
+    init() {
+        super.init(frame: NSRect(x: 0, y: 0, width: 38, height: 22))
+        wantsLayer = true
+
+        track.wantsLayer = true
+        track.layer?.cornerRadius = 11
+        knob.wantsLayer = true
+        knob.layer?.cornerRadius = 9
+        knob.layer?.backgroundColor = NSColor.white.cgColor
+        knob.layer?.shadowColor = NSColor.black.cgColor
+        knob.layer?.shadowOpacity = 0.25
+        knob.layer?.shadowRadius = 1.5
+        knob.layer?.shadowOffset = NSSize(width: 0, height: 1)
+        knob.layer?.masksToBounds = false
+
+        addSubview(track)
+        addSubview(knob)
+        track.frame = bounds
+
+        applyState(animated: false)
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) is not supported")
+    }
+
+    override var intrinsicContentSize: NSSize {
+        NSSize(width: 38, height: 22)
+    }
+
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool {
+        true
+    }
+
+    func setState(_ on: Bool, animated: Bool = true) {
+        guard on != isOn else { return }
+        isOn = on
+        applyState(animated: animated)
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        setState(!isOn)
+        onToggle?(isOn)
+    }
+
+    private func applyState(animated: Bool) {
+        let fillColor = NSColor(name: nil) { appearance in
+            let isDark = appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+            if isDark {
+                return self.isOn ? NSColor.controlAccentColor : NSColor(white: 1, alpha: 0.24)
+            }
+            return self.isOn ? NSColor.controlAccentColor : NSColor(white: 0, alpha: 0.18)
+        }
+        track.layer?.backgroundColor = resolve(fillColor)
+
+        let target = NSRect(x: isOn ? bounds.width - 20 : 2, y: 2, width: 18, height: 18)
+        if animated {
+            NSAnimationContext.runAnimationGroup { context in
+                context.duration = 0.18
+                context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+                knob.animator().frame = target
+            }
+        } else {
+            knob.frame = target
+        }
+    }
+
+    private func resolve(_ color: NSColor) -> CGColor {
+        var resolved = color
+        effectiveAppearance.performAsCurrentDrawingAppearance {
+            resolved = color.usingColorSpace(.sRGB) ?? color
+        }
+        return resolved.cgColor
+    }
+}
+
 final class ToggleRowView: NSView {
     var onToggle: ((Bool) -> Void)?
 
-    private let switchControl = NSSwitch()
+    private let switchControl = ToggleSwitch()
 
     init() {
         super.init(frame: NSRect(x: 0, y: 0, width: 260, height: 30))
 
-        switchControl.target = self
-        switchControl.action = #selector(switchChanged(_:))
+        switchControl.onToggle = { [weak self] on in
+            self?.onToggle?(on)
+        }
         switchControl.translatesAutoresizingMaskIntoConstraints = false
 
         let label = NSTextField(labelWithString: "Enable Caffeine")
@@ -32,14 +117,91 @@ final class ToggleRowView: NSView {
     }
 
     func setSwitchOn(_ on: Bool) {
-        let newState: NSControl.StateValue = on ? .on : .off
-        if switchControl.state != newState {
-            switchControl.state = newState
+        switchControl.setState(on, animated: false)
+    }
+}
+
+final class DurationRowView: NSView {
+    var onSelect: (() -> Void)?
+
+    var isSelectedRow = false {
+        didSet {
+            checkLabel.isHidden = !isSelectedRow
         }
     }
 
-    @objc private func switchChanged(_ sender: NSSwitch) {
-        onToggle?(sender.state == .on)
+    var showsChevron = false {
+        didSet {
+            chevronLabel.isHidden = !showsChevron
+        }
+    }
+
+    private let titleLabel: NSTextField
+    private let checkLabel = NSTextField(labelWithString: "✓")
+    private let chevronLabel = NSTextField(labelWithString: "▾")
+    private var hovering = false
+
+    init(title: String) {
+        titleLabel = NSTextField(labelWithString: title)
+        super.init(frame: NSRect(x: 0, y: 0, width: 260, height: 24))
+
+        for label in [titleLabel, checkLabel, chevronLabel] {
+            label.font = .menuFont(ofSize: 0)
+            label.translatesAutoresizingMaskIntoConstraints = false
+            addSubview(label)
+        }
+
+        checkLabel.isHidden = true
+        chevronLabel.isHidden = true
+
+        NSLayoutConstraint.activate([
+            checkLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 12),
+            checkLabel.centerYAnchor.constraint(equalTo: centerYAnchor),
+            titleLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 32),
+            titleLabel.centerYAnchor.constraint(equalTo: centerYAnchor),
+            chevronLabel.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -12),
+            chevronLabel.centerYAnchor.constraint(equalTo: centerYAnchor),
+        ])
+
+        addTrackingArea(NSTrackingArea(
+            rect: bounds,
+            options: [.mouseEnteredAndExited, .activeAlways],
+            owner: self
+        ))
+
+        updateTextColors()
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) is not supported")
+    }
+
+    override func draw(_ dirtyRect: NSRect) {
+        guard hovering else { return }
+        NSColor.controlAccentColor.setFill()
+        NSBezierPath(roundedRect: bounds.insetBy(dx: 5, dy: 2), xRadius: 5, yRadius: 5).fill()
+    }
+
+    override func mouseEntered(with event: NSEvent) {
+        hovering = true
+        needsDisplay = true
+        updateTextColors()
+    }
+
+    override func mouseExited(with event: NSEvent) {
+        hovering = false
+        needsDisplay = true
+        updateTextColors()
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        onSelect?()
+    }
+
+    private func updateTextColors() {
+        titleLabel.textColor = hovering ? .alternateSelectedControlTextColor : .labelColor
+        checkLabel.textColor = hovering ? .alternateSelectedControlTextColor : .controlAccentColor
+        chevronLabel.textColor = hovering ? .alternateSelectedControlTextColor : .secondaryLabelColor
     }
 }
 
