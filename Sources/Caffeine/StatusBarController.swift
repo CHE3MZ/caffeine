@@ -178,6 +178,7 @@ final class StatusBarController: NSObject, NSMenuDelegate {
             let timer = Timer(timeInterval: seconds, repeats: false) { [weak self] _ in
                 self?.caffeinationExpired()
             }
+            timer.tolerance = 5
             RunLoop.main.add(timer, forMode: .common)
             expirationTimer = timer
         } else {
