@@ -26,3 +26,10 @@ sh scripts/build-app.sh
 
 open build/Caffeine.app
 ```
+
+---
+
+### License
+
+
+#### [MIT](LICENSE)
