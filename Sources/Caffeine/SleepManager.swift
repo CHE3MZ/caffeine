@@ -8,7 +8,6 @@ final class SleepManager {
 
     private init() {}
 
-    @discardableResult
     func preventSleep(timeoutSeconds: TimeInterval) -> Bool {
         releaseAssertion()
 

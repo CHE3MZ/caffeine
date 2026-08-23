@@ -148,7 +148,7 @@ final class DurationRowView: NSView {
     private let titleLabel: NSTextField
     private let checkLabel = NSTextField(labelWithString: "✓")
     private let chevronView = NSImageView()
-    private static let chevronConfiguration = NSImage.SymbolConfiguration(pointSize: 16, weight: .semibold)
+    private static let chevronConfiguration = NSImage.SymbolConfiguration(pointSize: 13, weight: .medium)
     private var hovering = false
 
     init(title: String) {
@@ -269,7 +269,6 @@ final class CustomDurationView: NSView {
         slider.minValue = 0
         slider.maxValue = Double(max(0, ladder.count - 1))
         slider.isContinuous = true
-        slider.allowsTickMarkValuesOnly = false
         slider.controlSize = .small
         slider.target = self
         slider.action = #selector(sliderMoved(_:))

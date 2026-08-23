@@ -18,6 +18,7 @@ final class StatusBarController: NSObject, NSMenuDelegate {
 
     private static let customLadder = [1, 2, 3, 5, 10, 15, 20, 30, 45, 60, 90, 120, 180, 240, 360, 480, 720, 1440]
     private static let lowBatteryThresholdPercent = 20.0
+    private static let inactiveIconAlpha = 0.25
 
     private(set) var isActive = false
     private(set) var mode: Mode = .infinite
@@ -29,7 +30,7 @@ final class StatusBarController: NSObject, NSMenuDelegate {
 
     private var expirationDate: Date?
     private var expirationTimer: Timer?
-    private var countdownTimer: DispatchSourceTimer?
+    private var countdownTimer: Timer?
     private var pendingCustomRenewal: DispatchWorkItem?
     private var customExpanded = false
 
@@ -59,8 +60,7 @@ final class StatusBarController: NSObject, NSMenuDelegate {
         menu.autoenablesItems = false
 
         statusItem.menu = menu
-        statusItem.button?.image = inactiveIcon
-        statusItem.button?.toolTip = "Caffeine"
+        refreshIcon()
 
         batteryMonitor.onChange = { [weak self] in self?.evaluateLowBatteryCutoff() }
         batteryMonitor.start()
@@ -133,12 +133,14 @@ final class StatusBarController: NSObject, NSMenuDelegate {
     func activate() {
         cancelPendingCustomRenewal()
 
-        guard SleepManager.shared.preventSleep(timeoutSeconds: currentSeconds()) else {
+        let seconds = currentSeconds()
+        guard SleepManager.shared.preventSleep(timeoutSeconds: seconds) else {
             deactivate()
             return
         }
-        scheduleExpiration(seconds: currentSeconds())
+        scheduleExpiration(seconds: seconds)
         isActive = true
+        startCountdownIfNeeded()
 
         refreshIcon()
         refreshMenuState()
@@ -193,17 +195,16 @@ final class StatusBarController: NSObject, NSMenuDelegate {
 
     private func startCountdownIfNeeded() {
         guard isActive, expirationDate != nil, countdownTimer == nil else { return }
-        let source = DispatchSource.makeTimerSource(queue: .main)
-        source.schedule(deadline: .now(), repeating: 1.0, leeway: .milliseconds(250))
-        source.setEventHandler(handler: { [weak self] in
+        let timer = Timer(timeInterval: 1, repeats: true) { [weak self] _ in
             self?.tickCountdown()
-        })
-        source.resume()
-        countdownTimer = source
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        countdownTimer = timer
+        refreshRemainingLabel()
     }
 
     private func stopCountdown() {
-        countdownTimer?.cancel()
+        countdownTimer?.invalidate()
         countdownTimer = nil
     }
 
@@ -212,13 +213,13 @@ final class StatusBarController: NSObject, NSMenuDelegate {
             stopCountdown()
             return
         }
-        updateRemainingLabel()
+        refreshRemainingLabel()
         if date.timeIntervalSinceNow <= 0 {
             deactivate()
         }
     }
 
-    private func updateRemainingLabel() {
+    private func refreshRemainingLabel() {
         guard let date = expirationDate else { return }
         remainingRow.setText("Time Remaining: \(DurationFormat.countdown(secondsRemaining: date.timeIntervalSinceNow))")
     }
@@ -260,8 +261,7 @@ final class StatusBarController: NSObject, NSMenuDelegate {
         pendingCustomRenewal?.cancel()
         let renewal = DispatchWorkItem { [weak self] in
             guard let self, self.isActive, Self.isCustom(self.mode) else { return }
-            SleepManager.shared.preventSleep(timeoutSeconds: self.currentSeconds())
-            self.scheduleExpiration(seconds: self.currentSeconds())
+            self.applyDurationToActiveSession()
             self.refreshMenuState()
         }
         pendingCustomRenewal = renewal
@@ -305,7 +305,7 @@ final class StatusBarController: NSObject, NSMenuDelegate {
 
     private func refreshIcon() {
         statusItem.button?.image = isActive ? activeIcon : inactiveIcon
-        statusItem.button?.alphaValue = isActive ? 1.0 : 0.75
+        statusItem.button?.alphaValue = isActive ? 1.0 : Self.inactiveIconAlpha
         statusItem.button?.toolTip = isActive ? "Caffeine — keeping your Mac awake" : "Caffeine"
     }
 
@@ -314,11 +314,10 @@ final class StatusBarController: NSObject, NSMenuDelegate {
 
         if expirationDate != nil {
             remainingItem.isHidden = false
-            updateRemainingLabel()
+            refreshRemainingLabel()
         } else {
             remainingItem.isHidden = true
         }
-
         for entry in durationEntries {
             entry.row.isSelectedRow = entry.mode == mode
             entry.row.showsChevron = Self.isCustom(entry.mode)

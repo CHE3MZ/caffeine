@@ -1,13 +1,13 @@
 import AppKit
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
-    private var statusBar: StatusBarController!
+    private var statusBar: StatusBarController?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         statusBar = StatusBarController()
 
         if ProcessInfo.processInfo.environment["CAFFEINE_AUTOSTART"] == "1" {
-            statusBar.activate()
+            statusBar?.activate()
         }
     }
 
