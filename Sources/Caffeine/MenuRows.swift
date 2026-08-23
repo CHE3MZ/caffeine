@@ -1,101 +1,18 @@
 import AppKit
 
-final class ToggleSwitch: NSView {
-    var onToggle: ((Bool) -> Void)?
-
-    private(set) var isOn = false
-
-    private let track = NSView()
-    private let knob = NSView()
-
-    init() {
-        super.init(frame: NSRect(x: 0, y: 0, width: 38, height: 22))
-        wantsLayer = true
-
-        track.wantsLayer = true
-        track.layer?.cornerRadius = 11
-        knob.wantsLayer = true
-        knob.layer?.cornerRadius = 9
-        knob.layer?.backgroundColor = NSColor.white.cgColor
-        knob.layer?.shadowColor = NSColor.black.cgColor
-        knob.layer?.shadowOpacity = 0.25
-        knob.layer?.shadowRadius = 1.5
-        knob.layer?.shadowOffset = NSSize(width: 0, height: 1)
-        knob.layer?.masksToBounds = false
-
-        addSubview(track)
-        addSubview(knob)
-        track.frame = bounds
-
-        applyState(animated: false)
-    }
-
-    required init?(coder: NSCoder) {
-        fatalError("init(coder:) is not supported")
-    }
-
-    override var intrinsicContentSize: NSSize {
-        NSSize(width: 38, height: 22)
-    }
-
-    override func acceptsFirstMouse(for event: NSEvent?) -> Bool {
-        true
-    }
-
-    func setState(_ on: Bool, animated: Bool = true) {
-        guard on != isOn else { return }
-        isOn = on
-        applyState(animated: animated)
-    }
-
-    override func mouseDown(with event: NSEvent) {
-        setState(!isOn)
-        onToggle?(isOn)
-    }
-
-    private func applyState(animated: Bool) {
-        let fillColor = NSColor(name: nil) { appearance in
-            let isDark = appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
-            if isDark {
-                return self.isOn ? NSColor.controlAccentColor : NSColor(white: 1, alpha: 0.24)
-            }
-            return self.isOn ? NSColor.controlAccentColor : NSColor(white: 0, alpha: 0.18)
-        }
-        track.layer?.backgroundColor = resolve(fillColor)
-
-        let target = NSRect(x: isOn ? bounds.width - 20 : 2, y: 2, width: 18, height: 18)
-        if animated {
-            NSAnimationContext.runAnimationGroup { context in
-                context.duration = 0.18
-                context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
-                knob.animator().frame = target
-            }
-        } else {
-            knob.frame = target
-        }
-    }
-
-    private func resolve(_ color: NSColor) -> CGColor {
-        var resolved = color
-        effectiveAppearance.performAsCurrentDrawingAppearance {
-            resolved = color.usingColorSpace(.sRGB) ?? color
-        }
-        return resolved.cgColor
-    }
-}
-
 final class ToggleRowView: NSView {
     var onToggle: ((Bool) -> Void)?
 
-    private let switchControl = ToggleSwitch()
+    private let switchControl = NSSwitch()
 
     init() {
         super.init(frame: NSRect(x: 0, y: 0, width: 260, height: 30))
 
-        switchControl.onToggle = { [weak self] on in
-            self?.onToggle?(on)
-        }
+        switchControl.controlSize = .small
         switchControl.translatesAutoresizingMaskIntoConstraints = false
+        switchControl.target = self
+        switchControl.action = #selector(switchFlipped(_:))
+        switchControl.setAccessibilityLabel("Enable Caffeine")
 
         let label = NSTextField(labelWithString: "Enable Caffeine")
         label.font = .menuFont(ofSize: 0)
@@ -117,7 +34,11 @@ final class ToggleRowView: NSView {
     }
 
     func setSwitchOn(_ on: Bool) {
-        switchControl.setState(on, animated: false)
+        switchControl.state = on ? .on : .off
+    }
+
+    @objc private func switchFlipped(_ sender: NSSwitch) {
+        onToggle?(sender.state == .on)
     }
 }
 
@@ -127,6 +48,7 @@ final class DurationRowView: NSView {
     var isSelectedRow = false {
         didSet {
             checkLabel.isHidden = !isSelectedRow
+            setAccessibilityValue(isSelectedRow ? "selected" : nil)
         }
     }
 
@@ -177,6 +99,10 @@ final class DurationRowView: NSView {
             chevronView.centerYAnchor.constraint(equalTo: centerYAnchor),
         ])
 
+        setAccessibilityElement(true)
+        setAccessibilityRole(.button)
+        setAccessibilityLabel(title)
+
         addTrackingArea(NSTrackingArea(
             rect: bounds,
             options: [.mouseEnteredAndExited, .activeAlways],
@@ -210,6 +136,11 @@ final class DurationRowView: NSView {
 
     override func mouseDown(with event: NSEvent) {
         onSelect?()
+    }
+
+    override func accessibilityPerformPress() -> Bool {
+        onSelect?()
+        return true
     }
 
     private func updateTextColors() {
