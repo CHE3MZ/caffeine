@@ -42,24 +42,33 @@ final class BatteryMonitor {
     var onChange: (() -> Void)?
 
     private var runLoopSource: CFRunLoopSource?
+    private var monitorContext: UnsafeMutableRawPointer?
 
     func start() {
-        guard runLoopSource == nil else { return }
+        guard runLoopSource == nil, monitorContext == nil else { return }
 
-        let context = Unmanaged.passUnretained(self).toOpaque()
+        let context = Unmanaged.passRetained(self).toOpaque()
         let callback: @convention(c) (UnsafeMutableRawPointer?) -> Void = { rawContext in
             guard let rawContext else { return }
             Unmanaged<BatteryMonitor>.fromOpaque(rawContext).takeUnretainedValue().onChange?()
         }
 
-        guard let created = IOPSNotificationCreateRunLoopSource(callback, context)?.takeRetainedValue() else { return }
-        CFRunLoopAddSource(CFRunLoopGetMain(), created, .defaultMode)
+        guard let created = IOPSNotificationCreateRunLoopSource(callback, context)?.takeRetainedValue() else {
+            Unmanaged<BatteryMonitor>.fromOpaque(context).release()
+            return
+        }
+        monitorContext = context
+        CFRunLoopAddSource(CFRunLoopGetMain(), created, .commonModes)
         runLoopSource = created
     }
 
     func stop() {
         guard let source = runLoopSource else { return }
-        CFRunLoopRemoveSource(CFRunLoopGetMain(), source, .defaultMode)
+        CFRunLoopRemoveSource(CFRunLoopGetMain(), source, .commonModes)
+        if let context = monitorContext {
+            Unmanaged<BatteryMonitor>.fromOpaque(context).release()
+            monitorContext = nil
+        }
         runLoopSource = nil
     }
 }
