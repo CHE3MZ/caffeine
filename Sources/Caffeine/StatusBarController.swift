@@ -18,7 +18,6 @@ final class StatusBarController: NSObject, NSMenuDelegate {
 
     private static let customLadder = [1, 2, 3, 5, 10, 15, 20, 30, 45, 60, 90, 120, 180, 240, 360, 480, 720, 1440]
     private static let lowBatteryThresholdPercent = 20.0
-    private static let inactiveIconAlpha = 0.25
 
     private(set) var isActive = false
     private(set) var mode: Mode = .infinite
@@ -305,7 +304,6 @@ final class StatusBarController: NSObject, NSMenuDelegate {
 
     private func refreshIcon() {
         statusItem.button?.image = isActive ? activeIcon : inactiveIcon
-        statusItem.button?.alphaValue = isActive ? 1.0 : Self.inactiveIconAlpha
         statusItem.button?.toolTip = isActive ? "Caffeine — keeping your Mac awake" : "Caffeine"
     }
 
