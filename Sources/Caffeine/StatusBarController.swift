@@ -7,7 +7,7 @@ final class StatusBarController: NSObject, NSMenuDelegate {
         case custom
     }
 
-    private static let presetDurations: [(title: String, minutes: Int)] = [
+    static let presetDurations: [(title: String, minutes: Int)] = [
         ("15 Minutes", 15),
         ("30 Minutes", 30),
         ("45 Minutes", 45),
@@ -16,7 +16,7 @@ final class StatusBarController: NSObject, NSMenuDelegate {
         ("8 Hours", 480),
     ]
 
-    private static let customLadder = [1, 2, 3, 5, 10, 15, 20, 30, 45, 60, 90, 120, 180, 240, 360, 480, 720, 1440]
+    static let customLadder = [1, 2, 3, 5, 10, 15, 20, 30, 45, 60, 90, 120, 180, 240, 360, 480, 720, 1440]
     private static let lowBatteryThresholdPercent = 20.0
 
     private(set) var isActive = false

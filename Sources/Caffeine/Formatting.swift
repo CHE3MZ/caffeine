@@ -24,3 +24,19 @@ enum DurationFormat {
         return String(format: "%02d:%02d", minutes, seconds)
     }
 }
+
+extension DurationFormat {
+    static func closestLadderIndex(ladder: [Int], minutes: Int) -> Int {
+        precondition(!ladder.isEmpty, "ladder must not be empty")
+        var bestIndex = 0
+        var bestDistance = Int.max
+        for (index, value) in ladder.enumerated() {
+            let distance = abs(value - minutes)
+            if distance < bestDistance {
+                bestDistance = distance
+                bestIndex = index
+            }
+        }
+        return bestIndex
+    }
+}

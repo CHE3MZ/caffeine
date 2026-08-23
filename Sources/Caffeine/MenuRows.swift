@@ -298,22 +298,9 @@ final class CustomDurationView: NSView {
     }
 
     func setMinutes(_ minutes: Int) {
-        guard let index = closestIndex(for: minutes) else { return }
+        let index = DurationFormat.closestLadderIndex(ladder: ladder, minutes: minutes)
         slider.doubleValue = Double(index)
         valueLabel.stringValue = DurationFormat.short(minutes: ladder[index])
-    }
-
-    private func closestIndex(for minutes: Int) -> Int? {
-        var bestIndex: Int?
-        var bestDistance = Int.max
-        for (index, value) in ladder.enumerated() {
-            let distance = abs(value - minutes)
-            if distance < bestDistance {
-                bestDistance = distance
-                bestIndex = index
-            }
-        }
-        return bestIndex
     }
 
     @objc private func sliderMoved(_ sender: NSSlider) {
