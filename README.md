@@ -21,10 +21,20 @@ You can configure the app to keep on working after your battery percentage goes 
 
 ### Building
 
+Requires Xcode Command Line Tools (for `swift`). Packaging a DMG via `sh scripts/create-dmg.sh` additionally needs the [`create-dmg`](https://github.com/sindresorhus/create-dmg) CLI (`npm install -g create-dmg`).
+
 ```
 sh scripts/build-app.sh
 
 open build/Caffeine.app
+```
+
+### Autostart (optional)
+
+Launching with the environment variable `CAFFEINE_AUTOSTART=1` starts Caffeine already activated:
+
+```
+CAFFEINE_AUTOSTART=1 build/Caffeine.app/Contents/MacOS/Caffeine
 ```
 
 ---
