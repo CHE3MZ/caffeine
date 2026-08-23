@@ -132,35 +132,49 @@ final class DurationRowView: NSView {
 
     var showsChevron = false {
         didSet {
-            chevronLabel.isHidden = !showsChevron
+            chevronView.isHidden = !showsChevron
+            refreshChevron()
+        }
+    }
+
+    var isExpanded = false {
+        didSet {
+            if isExpanded != oldValue {
+                refreshChevron()
+            }
         }
     }
 
     private let titleLabel: NSTextField
     private let checkLabel = NSTextField(labelWithString: "✓")
-    private let chevronLabel = NSTextField(labelWithString: "▾")
+    private let chevronView = NSImageView()
+    private static let chevronConfiguration = NSImage.SymbolConfiguration(pointSize: 16, weight: .semibold)
     private var hovering = false
 
     init(title: String) {
         titleLabel = NSTextField(labelWithString: title)
         super.init(frame: NSRect(x: 0, y: 0, width: 260, height: 24))
 
-        for label in [titleLabel, checkLabel, chevronLabel] {
+        for label in [titleLabel, checkLabel] {
             label.font = .menuFont(ofSize: 0)
             label.translatesAutoresizingMaskIntoConstraints = false
             addSubview(label)
         }
 
+        chevronView.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(chevronView)
+        refreshChevron()
+        chevronView.isHidden = true
+
         checkLabel.isHidden = true
-        chevronLabel.isHidden = true
 
         NSLayoutConstraint.activate([
             checkLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 12),
             checkLabel.centerYAnchor.constraint(equalTo: centerYAnchor),
             titleLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 32),
             titleLabel.centerYAnchor.constraint(equalTo: centerYAnchor),
-            chevronLabel.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -12),
-            chevronLabel.centerYAnchor.constraint(equalTo: centerYAnchor),
+            chevronView.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -10),
+            chevronView.centerYAnchor.constraint(equalTo: centerYAnchor),
         ])
 
         addTrackingArea(NSTrackingArea(
@@ -200,8 +214,43 @@ final class DurationRowView: NSView {
 
     private func updateTextColors() {
         titleLabel.textColor = hovering ? .alternateSelectedControlTextColor : .labelColor
-        checkLabel.textColor = hovering ? .alternateSelectedControlTextColor : .controlAccentColor
-        chevronLabel.textColor = hovering ? .alternateSelectedControlTextColor : .secondaryLabelColor
+        checkLabel.textColor = hovering ? .alternateSelectedControlTextColor : .labelColor
+        chevronView.contentTintColor = hovering ? .alternateSelectedControlTextColor : .secondaryLabelColor
+    }
+
+    private func refreshChevron() {
+        let symbolName = isExpanded ? "chevron.down" : "chevron.right"
+        let image = NSImage(systemSymbolName: symbolName, accessibilityDescription: nil)?
+            .withSymbolConfiguration(Self.chevronConfiguration)
+        chevronView.image = image
+    }
+}
+
+final class LabelRowView: NSView {
+    private let label = NSTextField(labelWithString: "")
+
+    init(title: String = "") {
+        super.init(frame: NSRect(x: 0, y: 0, width: 260, height: 22))
+
+        label.font = .menuFont(ofSize: 0)
+        label.textColor = .secondaryLabelColor
+        label.stringValue = title
+        label.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(label)
+
+        NSLayoutConstraint.activate([
+            label.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 18),
+            label.trailingAnchor.constraint(lessThanOrEqualTo: trailingAnchor, constant: -12),
+            label.centerYAnchor.constraint(equalTo: centerYAnchor),
+        ])
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) is not supported")
+    }
+
+    func setText(_ text: String) {
+        label.stringValue = text
     }
 }
 

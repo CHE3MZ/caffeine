@@ -29,7 +29,7 @@ final class StatusBarController: NSObject, NSMenuDelegate {
 
     private var expirationDate: Date?
     private var expirationTimer: Timer?
-    private var countdownTimer: Timer?
+    private var countdownTimer: DispatchSourceTimer?
     private var pendingCustomRenewal: DispatchWorkItem?
     private var customExpanded = false
 
@@ -40,7 +40,8 @@ final class StatusBarController: NSObject, NSMenuDelegate {
 
     private let toggleRow = ToggleRowView()
     private let toggleItem = NSMenuItem()
-    private let remainingItem = NSMenuItem(title: "", action: nil, keyEquivalent: "")
+    private let remainingRow = LabelRowView()
+    private let remainingItem = NSMenuItem()
     private var durationEntries: [(mode: Mode, row: DurationRowView)] = []
     private let sliderRow = CustomDurationView(ladder: StatusBarController.customLadder)
     private let sliderItem = NSMenuItem()
@@ -79,17 +80,18 @@ final class StatusBarController: NSObject, NSMenuDelegate {
         }
         menu.addItem(toggleItem)
 
+        remainingItem.view = remainingRow
         remainingItem.isEnabled = false
         remainingItem.isHidden = true
         menu.addItem(remainingItem)
 
         menu.addItem(.separator())
 
-        addDurationRow(title: "- Infinite", mode: .infinite)
+        addDurationRow(title: "Infinite", mode: .infinite)
         for (title, minutes) in Self.presetDurations {
-            addDurationRow(title: "- \(title)", mode: .preset(minutes: minutes))
+            addDurationRow(title: title, mode: .preset(minutes: minutes))
         }
-        addDurationRow(title: "- Custom…", mode: .custom)
+        addDurationRow(title: "Custom…", mode: .custom)
 
         sliderItem.view = sliderRow
         sliderItem.isHidden = true
@@ -146,6 +148,7 @@ final class StatusBarController: NSObject, NSMenuDelegate {
         cancelPendingCustomRenewal()
         expirationTimer?.invalidate()
         expirationTimer = nil
+        stopCountdown()
         expirationDate = nil
         SleepManager.shared.releaseAssertion()
         isActive = false
@@ -186,6 +189,40 @@ final class StatusBarController: NSObject, NSMenuDelegate {
         deactivate()
     }
 
+    // MARK: - Live countdown
+
+    private func startCountdownIfNeeded() {
+        guard isActive, expirationDate != nil, countdownTimer == nil else { return }
+        let source = DispatchSource.makeTimerSource(queue: .main)
+        source.schedule(deadline: .now(), repeating: 1.0, leeway: .milliseconds(250))
+        source.setEventHandler(handler: { [weak self] in
+            self?.tickCountdown()
+        })
+        source.resume()
+        countdownTimer = source
+    }
+
+    private func stopCountdown() {
+        countdownTimer?.cancel()
+        countdownTimer = nil
+    }
+
+    private func tickCountdown() {
+        guard let date = expirationDate else {
+            stopCountdown()
+            return
+        }
+        updateRemainingLabel()
+        if date.timeIntervalSinceNow <= 0 {
+            deactivate()
+        }
+    }
+
+    private func updateRemainingLabel() {
+        guard let date = expirationDate else { return }
+        remainingRow.setText("Time Remaining: \(DurationFormat.countdown(secondsRemaining: date.timeIntervalSinceNow))")
+    }
+
     // MARK: - Selections
 
     private func durationSelected(_ newMode: Mode) {
@@ -196,7 +233,20 @@ final class StatusBarController: NSObject, NSMenuDelegate {
             mode = newMode
             customExpanded = false
         }
+
+        if isActive {
+            applyDurationToActiveSession()
+        }
         refreshMenuState()
+    }
+
+    private func applyDurationToActiveSession() {
+        cancelPendingCustomRenewal()
+        guard SleepManager.shared.preventSleep(timeoutSeconds: currentSeconds()) else {
+            deactivate()
+            return
+        }
+        scheduleExpiration(seconds: currentSeconds())
     }
 
     private func customValueChanged(_ minutes: Int) {
@@ -255,15 +305,16 @@ final class StatusBarController: NSObject, NSMenuDelegate {
 
     private func refreshIcon() {
         statusItem.button?.image = isActive ? activeIcon : inactiveIcon
+        statusItem.button?.alphaValue = isActive ? 1.0 : 0.75
         statusItem.button?.toolTip = isActive ? "Caffeine — keeping your Mac awake" : "Caffeine"
     }
 
     private func refreshMenuState() {
         toggleRow.setSwitchOn(isActive)
 
-        if let date = expirationDate {
+        if expirationDate != nil {
             remainingItem.isHidden = false
-            remainingItem.title = "Time Remaining: \(DurationFormat.countdown(secondsRemaining: date.timeIntervalSinceNow))"
+            updateRemainingLabel()
         } else {
             remainingItem.isHidden = true
         }
@@ -271,6 +322,7 @@ final class StatusBarController: NSObject, NSMenuDelegate {
         for entry in durationEntries {
             entry.row.isSelectedRow = entry.mode == mode
             entry.row.showsChevron = Self.isCustom(entry.mode)
+            entry.row.isExpanded = Self.isCustom(entry.mode) && customExpanded
         }
 
         if Self.isCustom(mode), customExpanded {
@@ -290,20 +342,11 @@ final class StatusBarController: NSObject, NSMenuDelegate {
     }
 
     func menuWillOpen(_ menu: NSMenu) {
-        guard isActive, expirationDate != nil else { return }
-        countdownTimer?.invalidate()
-        countdownTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
-            guard let self, self.isActive, let date = self.expirationDate else { return }
-            self.remainingItem.title = "Time Remaining: \(DurationFormat.countdown(secondsRemaining: date.timeIntervalSinceNow))"
-            if date.timeIntervalSinceNow <= 0 {
-                self.deactivate()
-            }
-        }
+        startCountdownIfNeeded()
     }
 
     func menuDidClose(_ menu: NSMenu) {
-        countdownTimer?.invalidate()
-        countdownTimer = nil
+        stopCountdown()
     }
 
     // MARK: - Icons
