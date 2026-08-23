@@ -6,6 +6,8 @@
 Caffeine is yet another caffeination application for macOS.
 Unlike most other caffeinators, this one is harder to activate and deactivate — you have to left-click the icon in your menu bar to get access to the toggle. This makes it so that you don't ever accidentally turn the caffeination on or off.
 
+![alt text](docs/screenshot-1.png)
+
 ---
 
 ### Features
