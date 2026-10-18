@@ -33,8 +33,8 @@ final class ToggleRowView: NSView {
         fatalError("init(coder:) is not supported")
     }
 
-    func setSwitchOn(_ on: Bool) {
-        switchControl.state = on ? .on : .off
+    func setSwitchOn(_ isOn: Bool) {
+        switchControl.state = isOn ? .on : .off
     }
 
     @objc private func switchFlipped(_ sender: NSSwitch) {
@@ -103,11 +103,12 @@ final class DurationRowView: NSView {
         setAccessibilityRole(.button)
         setAccessibilityLabel(title)
 
-        addTrackingArea(NSTrackingArea(
-            rect: bounds,
-            options: [.mouseEnteredAndExited, .activeAlways],
-            owner: self
-        ))
+        addTrackingArea(
+            NSTrackingArea(
+                rect: bounds,
+                options: [.mouseEnteredAndExited, .activeAlways],
+                owner: self
+            ))
 
         updateTextColors()
     }

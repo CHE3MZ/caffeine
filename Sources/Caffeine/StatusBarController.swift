@@ -33,8 +33,10 @@ final class StatusBarController: NSObject, NSMenuDelegate {
     private var pendingCustomRenewal: DispatchWorkItem?
     private var customExpanded = false
 
-    private lazy var activeIcon = Self.statusBarIcon(resourceBase: "coffee-enabled", symbolFallback: "cup.and.saucer.fill")
-    private lazy var inactiveIcon = Self.statusBarIcon(resourceBase: "coffee-disabled", symbolFallback: "cup.and.saucer")
+    private lazy var activeIcon = Self.statusBarIcon(
+        resourceBase: "coffee-enabled", symbolFallback: "cup.and.saucer.fill")
+    private lazy var inactiveIcon = Self.statusBarIcon(
+        resourceBase: "coffee-disabled", symbolFallback: "cup.and.saucer")
 
     private let batteryMonitor = BatteryMonitor()
 
@@ -111,7 +113,8 @@ final class StatusBarController: NSObject, NSMenuDelegate {
 
         menu.addItem(.separator())
 
-        let quitItem = NSMenuItem(title: "Quit Caffeine", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        let quitItem = NSMenuItem(
+            title: "Quit Caffeine", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         menu.addItem(quitItem)
     }
 
@@ -277,10 +280,10 @@ final class StatusBarController: NSObject, NSMenuDelegate {
 
     private func evaluateLowBatteryCutoff() {
         guard isActive, disableWhenBelow20,
-              let status = BatteryStatus.current(),
-              status.hasBattery,
-              !status.onACPower,
-              status.percent < Self.lowBatteryThresholdPercent
+            let status = BatteryStatus.current(),
+            status.hasBattery,
+            !status.onACPower,
+            status.percent < Self.lowBatteryThresholdPercent
         else { return }
 
         deactivate()
@@ -355,10 +358,11 @@ final class StatusBarController: NSObject, NSMenuDelegate {
 
         for (suffix, scale) in [("", CGFloat(1)), ("@2x", CGFloat(2)), ("@3x", CGFloat(3))] {
             guard let url = Bundle.main.url(forResource: resourceBase + suffix, withExtension: "png"),
-                  let representation = NSImageRep(contentsOf: url)
+                let representation = NSImageRep(contentsOf: url)
             else { continue }
-            representation.size = NSSize(width: CGFloat(representation.pixelsWide) / scale,
-                                         height: CGFloat(representation.pixelsHigh) / scale)
+            representation.size = NSSize(
+                width: CGFloat(representation.pixelsWide) / scale,
+                height: CGFloat(representation.pixelsHigh) / scale)
             composite.addRepresentation(representation)
             addedRepresentation = true
         }

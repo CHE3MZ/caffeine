@@ -8,7 +8,7 @@ struct BatteryStatus {
 
     static func current() -> BatteryStatus? {
         guard let snapshot = IOPSCopyPowerSourcesInfo()?.takeRetainedValue(),
-              let sources = IOPSCopyPowerSourcesList(snapshot)?.takeRetainedValue() as? [CFTypeRef]
+            let sources = IOPSCopyPowerSourcesList(snapshot)?.takeRetainedValue() as? [CFTypeRef]
         else { return nil }
 
         var hasBattery = false
@@ -16,7 +16,9 @@ struct BatteryStatus {
         var percent = 100.0
 
         for source in sources {
-            guard let description = IOPSGetPowerSourceDescription(snapshot, source)?.takeUnretainedValue() as NSDictionary?
+            guard
+                let description = IOPSGetPowerSourceDescription(snapshot, source)?.takeUnretainedValue()
+                    as NSDictionary?
             else { continue }
 
             if let type = description[kIOPSTypeKey] as? String, type == kIOPSInternalBatteryType {
