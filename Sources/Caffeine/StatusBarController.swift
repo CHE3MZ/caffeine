@@ -39,6 +39,7 @@ final class StatusBarController: NSObject, NSMenuDelegate {
         resourceBase: "coffee-disabled", symbolFallback: "cup.and.saucer")
 
     private let batteryMonitor = BatteryMonitor()
+    private let updateController = UpdateController()
 
     private let toggleRow = ToggleRowView()
     private let toggleItem = NSMenuItem()
@@ -110,6 +111,8 @@ final class StatusBarController: NSObject, NSMenuDelegate {
         settingsSubmenu.addItem(lowBatteryItem)
         settingsItem.submenu = settingsSubmenu
         menu.addItem(settingsItem)
+
+        menu.addItem(updateController.menuItem)
 
         menu.addItem(.separator())
 
@@ -349,10 +352,10 @@ final class StatusBarController: NSObject, NSMenuDelegate {
     func menuDidClose(_ menu: NSMenu) {
         stopCountdown()
     }
+}
 
-    // MARK: - Icons
-
-    private static func statusBarIcon(resourceBase: String, symbolFallback: String) -> NSImage {
+extension StatusBarController {
+    fileprivate static func statusBarIcon(resourceBase: String, symbolFallback: String) -> NSImage {
         let composite = NSImage()
         var addedRepresentation = false
 
