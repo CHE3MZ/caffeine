@@ -2,15 +2,23 @@ version: '3'
 
 tasks:
   default:
-    desc: Run lint checks.
+    desc: Run all lint and security checks.
     cmds:
-      - task: lint
+      - |
+        status=0
+        task lint || status=1
+        task security || status=1
+        exit $status
 
   lint:
-    desc: Run SwiftLint and swift-format checks over the codebase.
+    desc: Run ShellCheck, SwiftLint and swift-format checks.
     cmds:
-      - task: lint:swiftlint
-      - task: lint:swift-format
+      - |
+        status=0
+        task shellcheck || status=1
+        task lint:swiftlint || status=1
+        task lint:swift-format || status=1
+        exit $status
 
   lint:swiftlint:
     desc: Lint with SwiftLint.
@@ -22,8 +30,43 @@ tasks:
     cmds:
       - swift format lint --recursive --strict Package.swift Sources Tests
 
+  shellcheck:
+    desc: Lint the shell scripts with ShellCheck.
+    cmds:
+      - shellcheck scripts/*.sh
+
   format:
     desc: Auto-format the codebase with swift-format and SwiftLint.
     cmds:
       - swift format format --in-place --recursive Package.swift Sources Tests
       - swiftlint --fix
+
+  security:
+    desc: Run the security scans.
+    cmds:
+      - |
+        status=0
+        task scorecard || status=1
+        task gitleaks || status=1
+        exit $status
+
+  scorecard:
+    desc: Run OpenSSF Scorecard against a clean clone and log the report.
+    cmds:
+      - |
+        set -e
+        mkdir -p logs
+        tmp="$(mktemp -d)"
+        trap 'rm -rf "$tmp"' EXIT
+        git clone --quiet --local . "$tmp/repo"
+        scorecard --local "$tmp/repo" --show-details --format json > "$tmp/scorecard.json"
+        gron "$tmp/scorecard.json" > logs/log-scorecard.json
+        echo DONE
+
+  gitleaks:
+    desc: Scan the git history for secrets with Gitleaks.
+    cmds:
+      - |
+        mkdir -p logs
+        gitleaks git . --redact --no-banner --no-color > logs/log-gitleaks.txt 2>&1
+        echo DONE
