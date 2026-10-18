@@ -9,7 +9,7 @@ permissions:
 
 jobs:
   release:
-    name: Build app and publish DMG
+    name: Build and publish release
     runs-on: macos-latest
     timeout-minutes: 30
     permissions:
@@ -19,11 +19,23 @@ jobs:
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
 
       - name: Build app and DMG
+        env:
+          CAFFEINE_VERSION: ${{ github.ref_name }}
         run: |
           npm install --global create-dmg@8.1.0
           sh scripts/create-dmg.sh
 
+      - name: Package update assets
+        run: |
+          ditto -c -k --sequesterRsrc --keepParent \
+            build/Caffeine.app build/Caffeine.zip
+          shasum -a 256 build/Caffeine.zip \
+            | awk '{print $1}' > build/Caffeine.zip.sha256
+
       - name: Publish release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" build/Caffeine.dmg --generate-notes
+        run: |
+          gh release create "$GITHUB_REF_NAME" --generate-notes \
+            --title "${GITHUB_REF_NAME#v}" \
+            build/Caffeine.dmg build/Caffeine.zip build/Caffeine.zip.sha256
