@@ -1,0 +1,29 @@
+version: '3'
+
+tasks:
+  default:
+    desc: Run lint checks.
+    cmds:
+      - task: lint
+
+  lint:
+    desc: Run SwiftLint and swift-format checks over the codebase.
+    cmds:
+      - task: lint:swiftlint
+      - task: lint:swift-format
+
+  lint:swiftlint:
+    desc: Lint with SwiftLint.
+    cmds:
+      - swiftlint lint --strict
+
+  lint:swift-format:
+    desc: Lint with swift-format.
+    cmds:
+      - swift format lint --recursive --strict Package.swift Sources Tests
+
+  format:
+    desc: Auto-format the codebase with swift-format and SwiftLint.
+    cmds:
+      - swift format format --in-place --recursive Package.swift Sources Tests
+      - swiftlint --fix
