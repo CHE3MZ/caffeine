@@ -8,6 +8,12 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CONFIG="${1:-release}"
 APP="$ROOT/build/Caffeine.app"
 
+VERSION="${CAFFEINE_VERSION:-$(git -C "$ROOT" describe --tags --abbrev=0 2>/dev/null || true)}"
+VERSION="${VERSION#v}"
+VERSION="${VERSION:-0.0.0}"
+BUILD="${CAFFEINE_BUILD:-$(git -C "$ROOT" rev-list --count HEAD 2>/dev/null || true)}"
+BUILD="${BUILD:-1}"
+
 echo "==> swift build ($CONFIG)"
 swift build --package-path "$ROOT" -c "$CONFIG"
 
@@ -31,7 +37,7 @@ cp "$ROOT/assets/coffee-disabled-imgset/ion-coffee.png"    "$RESOURCES/coffee-di
 cp "$ROOT/assets/coffee-disabled-imgset/ion-coffee@2x.png" "$RESOURCES/coffee-disabled@2x.png"
 cp "$ROOT/assets/coffee-disabled-imgset/ion-coffee@3x.png" "$RESOURCES/coffee-disabled@3x.png"
 
-cat > "$APP/Contents/Info.plist" <<'PLIST'
+cat > "$APP/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -53,9 +59,9 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>1.0.0</string>
+	<string>$VERSION</string>
 	<key>CFBundleVersion</key>
-	<string>1</string>
+	<string>$BUILD</string>
 	<key>LSMinimumSystemVersion</key>
 	<string>13.0</string>
 	<key>LSUIElement</key>
