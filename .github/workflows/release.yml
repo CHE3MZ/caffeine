@@ -26,6 +26,7 @@ jobs:
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
           ref: ${{ env.VERSION }}
+          fetch-depth: 0
 
       - name: Build app and DMG
         env:
@@ -41,10 +42,20 @@ jobs:
           shasum -a 256 build/Caffeine.zip \
             | awk '{print $1}' > build/Caffeine.zip.sha256
 
+      - name: Generate release notes
+        run: |
+          brew install git-cliff
+          previous="$(git describe --tags --abbrev=0 --match 'v[0-9]*' "$VERSION^" 2>/dev/null || true)"
+          if [ -n "$previous" ]; then
+            git cliff --strip header "$previous..$VERSION" > build/RELEASE_NOTES.md
+          else
+            git cliff --latest --strip header > build/RELEASE_NOTES.md
+          fi
+
       - name: Publish release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$VERSION" --generate-notes \
+          gh release create "$VERSION" --notes-file build/RELEASE_NOTES.md \
             --title "${VERSION#v}" \
             build/Caffeine.dmg build/Caffeine.zip build/Caffeine.zip.sha256
