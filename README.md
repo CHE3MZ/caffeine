@@ -1,4 +1,4 @@
-![alt text](assets/icon.png)
+![alt text](assets/appicon.png)
 # Caffeine
 
 ### Caffeinate your Mac

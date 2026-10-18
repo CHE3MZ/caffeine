@@ -10,6 +10,11 @@ tasks:
         task security || status=1
         exit $status
 
+  build:
+    desc: Build build/Caffeine.app.
+    cmds:
+      - sh scripts/build-app.sh
+
   lint:
     desc: Run ShellCheck, SwiftLint and swift-format checks.
     cmds:
