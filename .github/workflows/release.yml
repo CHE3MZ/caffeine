@@ -20,7 +20,7 @@ jobs:
 
       - name: Build app and DMG
         run: |
-          npm install --global create-dmg
+          npm install --global create-dmg@8.1.0
           sh scripts/create-dmg.sh
 
       - name: Publish release
