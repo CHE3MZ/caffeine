@@ -18,6 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      actions: write
     # env:
     #   GH_TOKEN: ${{ github.token }}
     steps:
@@ -31,3 +32,10 @@ jobs:
       - uses: CHE3MZ/gitagger@v1
         with:
           args: ${{ inputs.bump }}
+      - name: Dispatch release workflow
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git fetch --tags
+          tag="$(git tag -l 'v*' | sort -V | tail -1)"
+          gh workflow run release.yml -f version="$tag" --ref "$GITHUB_REF_NAME"
