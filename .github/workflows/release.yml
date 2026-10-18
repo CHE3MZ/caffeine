@@ -3,6 +3,11 @@ name: Release
 on:
   push:
     tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Tag to release, for example v1.0.1
+        required: true
 
 permissions:
   contents: read
@@ -14,13 +19,17 @@ jobs:
     timeout-minutes: 30
     permissions:
       contents: write
+    env:
+      VERSION: ${{ inputs.version || github.ref_name }}
     steps:
       - name: Checkout
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          ref: ${{ env.VERSION }}
 
       - name: Build app and DMG
         env:
-          CAFFEINE_VERSION: ${{ github.ref_name }}
+          CAFFEINE_VERSION: ${{ env.VERSION }}
         run: |
           npm install --global create-dmg@8.1.0
           sh scripts/create-dmg.sh
@@ -36,6 +45,6 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$GITHUB_REF_NAME" --generate-notes \
-            --title "${GITHUB_REF_NAME#v}" \
+          gh release create "$VERSION" --generate-notes \
+            --title "${VERSION#v}" \
             build/Caffeine.dmg build/Caffeine.zip build/Caffeine.zip.sha256
