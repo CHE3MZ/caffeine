@@ -14,4 +14,9 @@ fi
 sh "$ROOT/scripts/build-app.sh" "$@"
 
 cd "$ROOT/build"
-create-dmg --overwrite --no-version-in-filename Caffeine.app
+
+flags=(--overwrite --no-version-in-filename)
+if [ "${CI:-}" = "true" ]; then
+    flags+=(--no-code-sign)
+fi
+create-dmg "${flags[@]}" Caffeine.app
