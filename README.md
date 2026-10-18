@@ -1,4 +1,5 @@
-![alt text](assets/appicon.png)
+<img src="assets/appicon.png" alt="Caffeine Logo" width="256" />
+
 # Caffeine
 
 ### Caffeinate your Mac
